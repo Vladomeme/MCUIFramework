@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "njols-ui-framework",
+  "version": "${mod_version}",
+  "name": "Njol's UI Framework",
+  "description": "A simple UI framework.",
+  "authors": [
+    "Njol"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Njol/MCUIFramework",
+    "issues": "https://github.com/Njol/MCUIFramework/issues",
+    "sources": "https://github.com/Njol/MCUIFramework"
+  },
+  "license": "GPL-3.0",
+  "icon": "assets/njols-ui-framework/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "ch.njol.minecraft.uiframework.UIFrameworkMod"
+    ],
+    "main": [
+    ]
+  },
+  "mixins": [
+    "njols-ui-framework.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": ">=${fabric_version}",
+    "minecraft": "~${minecraft_version}"
+  },
+  "recommends": {
+  },
+  "suggests": {
+  },
+  "custom": {
+    "modmenu": {
+      "badges": [
+        "library"
+      ]
+    }
+  }
+}
