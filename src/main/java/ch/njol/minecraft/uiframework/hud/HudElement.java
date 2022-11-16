@@ -65,10 +65,13 @@ public abstract class HudElement {
 
 	/**
 	 * Returns whether this HUD element is currently visible, given that it {@link #isEnabled() is enabled}.
-	 * This is ignored when the reorder screen is opened.
+	 * This is ignored while {@link #isInEditMode() on the edit screen}.
 	 */
 	protected abstract boolean isVisible();
 
+	/**
+	 * @return Whether the user is currently on the edit screen. This element should display something
+	 */
 	public boolean isInEditMode() {
 		return client.currentScreen instanceof HudEditScreen;
 	}
