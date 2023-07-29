@@ -1,13 +1,13 @@
 package ch.njol.minecraft.uiframework.mixins;
 
 import ch.njol.minecraft.uiframework.hud.Hud;
-import net.minecraft.client.gui.hud.ChatHud;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,6 +20,9 @@ public abstract class ChatScreenMixin extends Screen {
 
 	@Unique
 	private final Hud hud = Hud.INSTANCE;
+
+	@Shadow
+	protected abstract Style getTextStyleAt(double x, double y);
 
 	protected ChatScreenMixin(Text title) {
 		super(title);
@@ -54,15 +57,22 @@ public abstract class ChatScreenMixin extends Screen {
 		hud.removed();
 	}
 
-	@Redirect(method = "render(Lnet/minecraft/client/util/math/MatrixStack;IIF)V",
-		at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/hud/ChatHud;getText(DD)Lnet/minecraft/text/Style;"))
-	public Style render(ChatHud instance, double x, double y, MatrixStack matrices, int mouseX, int mouseY, float delta) {
-		Style style = instance.getText(x, y);
+	@Redirect(method = "render",
+		at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screen/ChatScreen;getTextStyleAt(DD)Lnet/minecraft/text/Style;"))
+	public Style render(ChatScreen instance, double mouseX, double mouseY) {
+		Style style = this.getTextStyleAt(mouseX, mouseY);
 		if (style != null && style.getHoverEvent() != null) {
 			return style;
 		}
-		hud.renderTooltip(this, matrices, mouseX, mouseY);
+		if (client != null && client.inGameHud.getChatHud().getIndicatorAt(mouseX, mouseY) != null) {
+			return style;
+		}
 		return style;
 	}
 
+	@Inject(method = "render", at = @At(value = "INVOKE",
+			target = "Lnet/minecraft/client/gui/DrawContext;drawHoverEvent(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Style;II)V"))
+	public void render(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+		hud.renderTooltip(this, context, mouseX, mouseY);
+	}
 }

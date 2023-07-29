@@ -19,13 +19,14 @@ public class ModSpriteAtlasHolder extends SpriteAtlasHolder {
 	private final String atlasName;
 	private final List<Identifier> sprites = new ArrayList<>();
 
+	//It is also required to create a json file in your assets folder under /atlases (the name needs to correspond to the atlasName)
+	//see the format on the wiki
 	private ModSpriteAtlasHolder(TextureManager textureManager, String namespace, String atlasName) {
-		super(textureManager, new Identifier(namespace, "textures/" + atlasName + "/atlas.png"), atlasName);
+		super(textureManager, new Identifier(namespace, "textures/" + atlasName + "/atlas.png"), new Identifier(namespace, atlasName));
 		this.namespace = namespace;
 		this.atlasName = atlasName;
 	}
 
-	@Override
 	protected Stream<Identifier> getSprites() {
 		return sprites.stream();
 	}

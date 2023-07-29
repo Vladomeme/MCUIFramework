@@ -3,8 +3,9 @@ package ch.njol.minecraft.uiframework.hud;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.List;
+
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.util.math.MatrixStack;
 
 public class Hud {
 
@@ -78,7 +79,7 @@ public class Hud {
 		}
 	}
 
-	public void renderTooltip(Screen screen, MatrixStack matrices, int mouseX, int mouseY) {
+	public void renderTooltip(Screen screen, DrawContext context, int mouseX, int mouseY) {
 		for (HudElement element : elements) {
 			if (!element.isEnabled() || (!element.isVisible() && !(screen instanceof HudEditScreen))) {
 				continue;
@@ -87,10 +88,10 @@ public class Hud {
 			if (!dimension.contains(mouseX, mouseY) || !element.isClickable(mouseX - dimension.x, mouseY - dimension.y)) {
 				continue;
 			}
-			matrices.push();
-			matrices.translate(dimension.x, dimension.y, 0);
-			element.renderTooltip(screen, matrices, mouseX - dimension.x, mouseY - dimension.y);
-			matrices.pop();
+			context.getMatrices().push();
+			context.getMatrices().translate(dimension.x, dimension.y, 0);
+			element.renderTooltip(screen, context, mouseX - dimension.x, mouseY - dimension.y);
+			context.getMatrices().pop();
 			return;
 		}
 	}

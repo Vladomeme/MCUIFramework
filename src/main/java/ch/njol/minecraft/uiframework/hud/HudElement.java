@@ -5,6 +5,7 @@ import ch.njol.minecraft.uiframework.Utils;
 import com.mojang.blaze3d.systems.RenderSystem;
 import java.awt.Rectangle;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
@@ -13,10 +14,9 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.texture.Sprite;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.Matrix4f;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.joml.Matrix4f;
 
 public abstract class HudElement {
 
@@ -28,23 +28,23 @@ public abstract class HudElement {
 		client = MinecraftClient.getInstance();
 	}
 
-	public void renderAbsolute(MatrixStack matrices, float tickDelta) {
+	public void renderAbsolute(DrawContext context, float tickDelta) {
 		if (!isEnabled() || (!isVisible() && !isInEditMode())) {
 			return;
 		}
 		Rectangle dimension = getDimension();
-		matrices.push();
-		matrices.translate(dimension.x, dimension.y, getZOffset());
-		RenderSystem.setShader(GameRenderer::getPositionTexShader);
+		context.getMatrices().push();
+		context.getMatrices().translate(dimension.x, dimension.y, getZOffset());
+		RenderSystem.setShader(GameRenderer::getPositionTexProgram);
 		RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 		RenderSystem.enableBlend();
 		RenderSystem.defaultBlendFunc();
 		try {
-			render(matrices, tickDelta);
+			render(context, tickDelta);
 		} catch (Exception e) {
 			LOGGER.error("Error rendering " + getClass().getCanonicalName(), e);
 		} finally {
-			matrices.pop();
+			context.getMatrices().pop();
 		}
 	}
 
@@ -84,75 +84,75 @@ public abstract class HudElement {
 
 	protected abstract int getZOffset();
 
-	protected abstract void render(MatrixStack matrices, float tickDelta);
+	protected abstract void render(DrawContext context, float tickDelta);
 
 	// helper methods
 
 	/**
 	 * Draws text with a full black border around it
 	 */
-	public void drawOutlinedText(MatrixStack matrices, String text, int x, int y, int color) {
-		matrices.push();
-		matrices.translate(0, 0, 1);
-		client.textRenderer.draw(matrices, text, x - 1, y, 0);
-		client.textRenderer.draw(matrices, text, x, y - 1, 0);
-		client.textRenderer.draw(matrices, text, x + 1, y, 0);
-		client.textRenderer.draw(matrices, text, x, y + 1, 0);
-		matrices.translate(0, 0, 0.03f);
-		client.textRenderer.draw(matrices, text, x, y, color);
-		matrices.pop();
+	public void drawOutlinedText(DrawContext context, String text, int x, int y, int color) {
+		context.getMatrices().push();
+		context.getMatrices().translate(0, 0, 1);
+
+		context.drawText(client.textRenderer, text, x - 1, y, 0, false);
+		context.drawText(client.textRenderer, text, x, y - 1, 0, false);
+		context.drawText(client.textRenderer, text, x + 1, y, 0, false);
+		context.drawText(client.textRenderer, text, x, y + 1, 0, false);
+		context.getMatrices().translate(0, 0, 0.03f);
+		context.drawText(client.textRenderer, text, x, y, color, false);
+		context.getMatrices().pop();
 	}
 
-	public static void drawTextureSmooth(MatrixStack matrices, float x, float y, float width, float height) {
-		drawTexturedQuadSmooth(matrices.peek().getPositionMatrix(), x, y, x + width, y + height, 0, 0, 0, 1, 1);
+	public static void drawTextureSmooth(DrawContext context, float x, float y, float width, float height) {
+		drawTexturedQuadSmooth(context.getMatrices().peek().getPositionMatrix(), x, y, x + width, y + height, 0, 0, 0, 1, 1);
 	}
 
-	public static void drawTextureSmooth(MatrixStack matrices, float x, float y, float width, float height, float u0, float u1, float v0, float v1) {
-		drawTexturedQuadSmooth(matrices.peek().getPositionMatrix(), x, y, x + width, y + height, 0, u0, v0, u1, v1);
+	public static void drawTextureSmooth(DrawContext context, float x, float y, float width, float height, float u0, float u1, float v0, float v1) {
+		drawTexturedQuadSmooth(context.getMatrices().peek().getPositionMatrix(), x, y, x + width, y + height, 0, u0, v0, u1, v1);
 	}
 
 	public static void drawTexturedQuadSmooth(Matrix4f matrices, float x0, float y0, float x1, float y1, float z, float u0, float v0, float u1, float v1) {
-		RenderSystem.setShader(GameRenderer::getPositionTexShader);
+		RenderSystem.setShader(GameRenderer::getPositionTexProgram);
 		BufferBuilder bufferBuilder = Tessellator.getInstance().getBuffer();
 		bufferBuilder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
 		bufferBuilder.vertex(matrices, x0, y1, z).texture(u0, v1).next();
 		bufferBuilder.vertex(matrices, x1, y1, z).texture(u1, v1).next();
 		bufferBuilder.vertex(matrices, x1, y0, z).texture(u1, v0).next();
 		bufferBuilder.vertex(matrices, x0, y0, z).texture(u0, v0).next();
-		bufferBuilder.end();
-		BufferRenderer.draw(bufferBuilder);
+		BufferRenderer.drawWithGlobalProgram(bufferBuilder.end());
 	}
 
-	public static void drawSprite(MatrixStack matrices, Sprite sprite, float x, float y, float width, float height) {
-		RenderSystem.setShaderTexture(0, sprite.getAtlas().getId());
-		drawTexturedQuadSmooth(matrices.peek().getPositionMatrix(), x, y, x + width, y + height, 0, sprite.getMinU(), sprite.getMinV(), sprite.getMaxU(), sprite.getMaxV());
+	public static void drawSprite(DrawContext context, Sprite sprite, float x, float y, float width, float height) {
+		RenderSystem.setShaderTexture(0, sprite.getAtlasId());
+		drawTexturedQuadSmooth(context.getMatrices().peek().getPositionMatrix(), x, y, x + width, y + height, 0, sprite.getMinU(), sprite.getMinV(), sprite.getMaxU(), sprite.getMaxV());
 	}
 
 	/**
 	 * Draws a sub-rectangle of the given sprite into the given area (thus filling the area only partially).
 	 * The 'cut' coordinates are relative offsets, e.g. a cutX0=0.1 and cutX1=0.8 will cut off the leftmost 10% of the sprite and the rightmost 20%.
 	 */
-	public static void drawPartialSprite(MatrixStack matrices, Sprite sprite, float x, float y, float width, float height, float cutX0, float cutY0, float cutX1, float cutY1) {
+	public static void drawPartialSprite(DrawContext context, Sprite sprite, float x, float y, float width, float height, float cutX0, float cutY0, float cutX1, float cutY1) {
 		if (cutX0 >= cutX1 || cutY0 >= cutX1 || width == 0 || height == 0) {
 			return;
 		}
-		RenderSystem.setShaderTexture(0, sprite.getAtlas().getId());
-		drawTexturedQuadSmooth(matrices.peek().getPositionMatrix(), x + width * cutX0, y + height * cutY0, x + width * cutX1, y + height * cutY1, 0,
+		RenderSystem.setShaderTexture(0, sprite.getAtlasId());
+		drawTexturedQuadSmooth(context.getMatrices().peek().getPositionMatrix(), x + width * cutX0, y + height * cutY0, x + width * cutX1, y + height * cutY1, 0,
 			sprite.getMinU() + cutX0 * (sprite.getMaxU() - sprite.getMinU()), sprite.getMinV() + cutY0 * (sprite.getMaxV() - sprite.getMinV()),
 			sprite.getMinU() + cutX1 * (sprite.getMaxU() - sprite.getMinU()), sprite.getMinV() + cutY1 * (sprite.getMaxV() - sprite.getMinV()));
 	}
 
 	// need to draw lots of quads for this as the sprite texture is in an atlas and thus wrapping UV isn't possible
-	public static void drawRepeatingSprite(MatrixStack matrices, Sprite sprite, float x, float y, float width, float height, float xRepetitions, float yRepetitions) {
+	public static void drawRepeatingSprite(DrawContext context, Sprite sprite, float x, float y, float width, float height, float xRepetitions, float yRepetitions) {
 		if (xRepetitions * yRepetitions > 1000) {
 			throw new IllegalArgumentException("Too many sprite repetitions requested! (" + xRepetitions + ", " + yRepetitions + ")");
 		}
-		RenderSystem.setShaderTexture(0, sprite.getAtlas().getId());
+		RenderSystem.setShaderTexture(0, sprite.getAtlasId());
 		for (int xrep = 0; xrep < xRepetitions; xrep++) {
 			for (int yrep = 0; yrep < yRepetitions; yrep++) {
 				float xfactor = Math.min(1.0f, xRepetitions - xrep);
 				float yfactor = Math.min(1.0f, yRepetitions - yrep);
-				drawTexturedQuadSmooth(matrices.peek().getPositionMatrix(),
+				drawTexturedQuadSmooth(context.getMatrices().peek().getPositionMatrix(),
 					x + width * xrep, y + height * yrep, x + width * (xrep + xfactor), y + height * (yrep + yfactor), 0,
 					sprite.getMinU(), sprite.getMinV(), sprite.getMinU() + (sprite.getMaxU() - sprite.getMinU()) * xfactor, sprite.getMinV() + (sprite.getMaxV() - sprite.getMinV()) * yfactor);
 			}
@@ -175,8 +175,8 @@ public abstract class HudElement {
 	}
 
 	protected boolean isPixelTransparent(Sprite sprite, double relativeX, double relativeY) {
-		return sprite.isPixelTransparent(0, Utils.clamp(0, (int) (relativeX * sprite.getWidth()), sprite.getWidth() - 1),
-			Utils.clamp(0, (int) (relativeY * sprite.getHeight()), sprite.getHeight() - 1));
+		return sprite.getContents().isPixelTransparent(0, Utils.clamp(0, (int) (relativeX * sprite.getContents().getWidth()), sprite.getContents().getWidth() - 1),
+			Utils.clamp(0, (int) (relativeY * sprite.getContents().getHeight()), sprite.getContents().getHeight() - 1));
 	}
 
 	/**
@@ -266,7 +266,7 @@ public abstract class HudElement {
 		dragging = false;
 	}
 
-	public void renderTooltip(Screen screen, MatrixStack matrices, int mouseX, int mouseY) {
+	public void renderTooltip(Screen screen, DrawContext context, int mouseX, int mouseY) {
 
 	}
 
